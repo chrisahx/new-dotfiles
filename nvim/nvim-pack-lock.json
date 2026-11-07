@@ -29,6 +29,10 @@
       "rev": "561751e839b99a4baca36b9d963166b66d2536a6",
       "src": "https://www.github.com/echasnovski/mini.nvim"
     },
+    "monokai-pro.nvim": {
+      "rev": "a68e38b8e55d69a215d0f02598900a79c356da9d",
+      "src": "https://github.com/loctvl842/monokai-pro.nvim"
+    },
     "nvim-lspconfig": {
       "rev": "046b1a797af1effe8e0474b9af9657a3761ec58a",
       "src": "https://www.github.com/neovim/nvim-lspconfig"
@@ -44,6 +48,10 @@
     "roslyn.nvim": {
       "rev": "bf1bd4e70bc7068d1b4aebf4ce03cc19a86615be",
       "src": "https://github.com/seblyng/roslyn.nvim"
+    },
+    "sonokai": {
+      "rev": "b023c5280b16fe2366f5e779d8d2756b3e5ee9c3",
+      "src": "https://github.com/sainnhe/sonokai"
     },
     "vim-tmux-navigator": {
       "rev": "e41c431a0c7b7388ae7ba341f01a0d217eb3a432",

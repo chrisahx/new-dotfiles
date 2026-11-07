@@ -1,0 +1,44 @@
+{
+  "XML method documentation": {
+    "prefix": "docmethod",
+    "body": [
+      "/// <summary>",
+      "/// ${1:Describes what the method does.}",
+      "/// </summary>",
+      "/// <param name=\"${2:parameter}\">${3:Describes the parameter.}</param>",
+      "/// <returns>${4:Describes the return value.}</returns>",
+      "$0"
+    ],
+    "description": "C# XML method documentation with one parameter and a return value"
+  },
+  "XML method documentation (two parameters)": {
+    "prefix": "docmethod2",
+    "body": [
+      "/// <summary>",
+      "/// ${1:Describes what the method does.}",
+      "/// </summary>",
+      "/// <param name=\"${2:firstParameter}\">${3:Describes the first parameter.}</param>",
+      "/// <param name=\"${4:secondParameter}\">${5:Describes the second parameter.}</param>",
+      "/// <returns>${6:Describes the return value.}</returns>",
+      "$0"
+    ],
+    "description": "C# XML method documentation with two parameters and a return value"
+  },
+  "XML class documentation": {
+    "prefix": "docclass",
+    "body": [
+      "/// <summary>",
+      "/// ${1:Describes the class and its purpose.}",
+      "/// </summary>",
+      "$0"
+    ],
+    "description": "C# XML summary documentation for a class"
+  },
+  "XML parameter documentation": {
+    "prefix": "docparam",
+    "body": [
+      "/// <param name=\"${1:parameter}\">${2:Describes the parameter.}</param>$0"
+    ],
+    "description": "C# XML documentation for an additional parameter"
+  }
+}

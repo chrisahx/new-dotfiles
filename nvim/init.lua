@@ -1,11 +1,12 @@
 vim.opt.termguicolors = true
 
--- installed early so it's available before colorscheme() runs below
--- (the rest of the plugin list is installed further down, near PLUGINS)
-vim.pack.add({ "https://github.com/savq/melange-nvim" })
+-- Installed early so it is available before colorscheme() runs below.
+-- (The rest of the plugin list is installed further down, near PLUGINS.)
+vim.pack.add({ "https://github.com/sainnhe/sonokai" })
 
-vim.opt.background = "dark" -- set to "light" for the light variant
-vim.cmd.colorscheme("melange")
+vim.opt.background = "dark"
+vim.g.sonokai_enable_italic = 1
+vim.cmd.colorscheme("sonokai")
 
 -- ============================================================================
 -- OPTIONS
@@ -160,6 +161,55 @@ end, { desc = "Toggle diagnostics" })
 -- ============================================================================
 
 local augroup = vim.api.nvim_create_augroup("UserConfig", { clear = true })
+
+-- ============================================================================
+-- LIVE FILE RELOAD: check visible, unmodified files every second (Normal mode)
+-- ============================================================================
+-- Stop the previous timer if this config is sourced again.
+if _G.file_reload_timer then
+	_G.file_reload_timer:stop()
+	_G.file_reload_timer:close()
+end
+
+local reload_timer = vim.uv.new_timer()
+_G.file_reload_timer = reload_timer
+
+reload_timer:start(1000, 1000, vim.schedule_wrap(function()
+	-- Ignore callbacks queued before the timer was replaced or closed.
+	if _G.file_reload_timer ~= reload_timer then
+		return
+	end
+
+	-- Avoid interrupting typing, selections, or command-line input.
+	if vim.api.nvim_get_mode().mode ~= "n" then
+		return
+	end
+
+	local checked = {}
+	for _, win in ipairs(vim.api.nvim_list_wins()) do
+		local buf = vim.api.nvim_win_get_buf(win)
+		if not checked[buf]
+			and vim.bo[buf].buftype == ""
+			and not vim.bo[buf].modified
+			and vim.api.nvim_buf_get_name(buf) ~= ""
+		then
+			checked[buf] = true
+			vim.cmd("checktime " .. buf)
+		end
+	end
+end))
+
+vim.api.nvim_create_autocmd("VimLeavePre", {
+	group = augroup,
+	callback = function()
+		reload_timer:stop()
+		reload_timer:close()
+		_G.file_reload_timer = nil
+	end,
+})
+-- ============================================================================
+-- END LIVE FILE RELOAD
+-- ============================================================================
 
 -- Format on save (ONLY real file buffers, ONLY when efm is attached)
 vim.api.nvim_create_autocmd("BufWritePre", {
@@ -366,13 +416,8 @@ vim.keymap.set("n", "<leader>fX", function()
 end, { desc = "FZF Diagnostics Workspace" })
 
 require("mini.ai").setup({})
-require("mini.comment").setup({
-	options = {
-		custom_commentstring = function()
-			return require("ts_context_commentstring.internal").calculate_commentstring() or vim.bo.commentstring
-		end,
-	},
-})
+-- Use the buffer's commentstring without requiring an extra plugin.
+require("mini.comment").setup({})
 require("mini.move").setup({})
 require("mini.surround").setup({})
 require("mini.cursorword").setup({})
@@ -383,11 +428,10 @@ require("mini.bufremove").setup({})
 require("mini.notify").setup({})
 require("mini.icons").setup({})
 
--- statusline: theme "auto" pulls colors straight from melange's highlight
--- groups (no dedicated melange lualine theme exists, so this generates one)
+-- Use the matching Sonokai lualine theme.
 require("lualine").setup({
 	options = {
-		theme = "melange", -- melange-nvim ships a dedicated lualine theme
+		theme = "sonokai",
 		icons_enabled = true,
 		component_separators = { left = "", right = "" },
 		section_separators = { left = "", right = "" },
@@ -504,11 +548,18 @@ local function lsp_on_attach(ev)
 		require("fzf-lua").lsp_definitions({ jump_to_single_result = true })
 	end, opts)
 
-	vim.keymap.set("n", "<leader>gD", vim.lsp.buf.definition, opts)
+	-- Uppercase navigation opens the destination in a vertical split.
+	-- Keep <leader>gS as an alias for the existing definition split mapping.
+	for _, lhs in ipairs({ "<leader>gD", "<leader>gS" }) do
+		vim.keymap.set("n", lhs, function()
+			vim.cmd("vsplit")
+			require("fzf-lua").lsp_definitions({ jump_to_single_result = true })
+		end, opts)
+	end
 
-	vim.keymap.set("n", "<leader>gS", function()
+	vim.keymap.set("n", "<leader>gI", function()
 		vim.cmd("vsplit")
-		vim.lsp.buf.definition()
+		require("fzf-lua").lsp_implementations({ jump_to_single_result = true })
 	end, opts)
 
 	vim.keymap.set("n", "<leader>ca", vim.lsp.buf.code_action, opts)
@@ -542,9 +593,11 @@ local function lsp_on_attach(ev)
 	vim.keymap.set("n", "<leader>fw", function()
 		require("fzf-lua").lsp_workspace_symbols()
 	end, opts)
-	vim.keymap.set("n", "<leader>fi", function()
-		require("fzf-lua").lsp_implementations()
-	end, opts)
+	for _, lhs in ipairs({ "<leader>fi", "<leader>gi" }) do
+		vim.keymap.set("n", lhs, function()
+			require("fzf-lua").lsp_implementations()
+		end, opts)
+	end
 
 	if client:supports_method("textDocument/codeAction", bufnr) then
 		vim.keymap.set("n", "<leader>oi", function()
@@ -574,6 +627,8 @@ require("blink.cmp").setup({
 		["<CR>"] = { "accept", "fallback" },
 		["<C-j>"] = { "select_next", "fallback" },
 		["<C-k>"] = { "select_prev", "fallback" },
+		["<C-n>"] = { "select_next", "fallback" },
+		["<C-p>"] = { "select_prev", "fallback" },
 		["<Tab>"] = { "snippet_forward", "fallback" },
 		["<S-Tab>"] = { "snippet_backward", "fallback" },
 	},
@@ -587,7 +642,16 @@ require("blink.cmp").setup({
 	},
 	-- signature help while typing function calls (was previously unset)
 	signature = { enabled = true },
-	sources = { default = { "lsp", "path", "buffer", "snippets" } },
+	sources = {
+		default = { "lsp", "path", "buffer", "snippets" },
+		providers = {
+			snippets = {
+				opts = {
+					search_paths = { vim.fn.stdpath("config") .. "/snippets" },
+				},
+			},
+		},
+	},
 	-- snippets now use blink's native engine — LuaSnip dependency removed
 	fuzzy = {
 		implementation = "prefer_rust",
